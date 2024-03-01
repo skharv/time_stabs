@@ -10,6 +10,14 @@ pub struct ClickPosition {
 }
 
 #[derive(Component)]
+pub struct ClickTimer {
+    pub timer: Timer,
+}
+
+#[derive(Component)]
+pub struct Held;
+
+#[derive(Component)]
 pub struct Selectable;
 
 #[derive(Component)]
