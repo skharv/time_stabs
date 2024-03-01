@@ -39,7 +39,6 @@ pub fn draw_gizmo(
     query: Query<&Transform, With<Selected>>
     ) {
     for transform in query.iter() {
-        info!("drawing gizmo");
         gizmos.circle_2d(transform.translation.xy(), 15.5, Color::GREEN);
     }
 }

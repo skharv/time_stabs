@@ -1,10 +1,10 @@
 use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
 
-use crate::input::component;
+use crate::input::{component, component::AsVec2};
 use super::{Deselect, Select};
 
 const BOX_COLOR: Color = Color::rgba(0.0, 1.0, 0.0, 0.25);
-const CLICK_TIME_LENGTH: f32 = 0.15;
+const CLICK_ACCURACY: f32 = 2.0;
 
 pub fn spawn_box(
     mut commands: Commands,
@@ -20,17 +20,7 @@ pub fn spawn_box(
     },
     component::Mouse,
     component::ClickPosition { x: 0.0, y: 0.0 },
-    component::ClickTimer { timer: Timer::from_seconds(CLICK_TIME_LENGTH, TimerMode::Once) },
     ));
-}
-
-pub fn click_tick(
-    mut query: Query<&mut component::ClickTimer, With<component::Mouse>>,
-    time: Res<Time>,
-) {
-    for mut click_timer in query.iter_mut() {
-        click_timer.timer.tick(time.delta());
-    }
 }
 
 pub fn show_hide_box(
@@ -78,29 +68,21 @@ pub fn select_entities(
     mut commands: Commands,
     mut select_event: EventWriter<Select>,
     mut deselect_event: EventWriter<Deselect>,
-    mut mouse_query: Query<(Entity, &component::ClickPosition, &mut component::ClickTimer, Option<&component::Held>), With<component::Mouse>>,
+    mouse_query: Query<(Entity, &component::ClickPosition, Option<&component::Held>), With<component::Mouse>>,
     selection_query: Query<(Entity, &Transform, &crate::unit::component::Radius, Option<&component::Selected>), With<component::Selectable>>,
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
     mouse_input: Res<ButtonInput<MouseButton>>,
 ) {
-    if mouse_input.just_pressed(MouseButton::Left) {
+    if mouse_input.pressed(MouseButton::Left) && !mouse_input.just_pressed(MouseButton::Left) {
         let (camera, camera_transform) = cameras.single();
         if let Some(cursor_position) = windows.single().cursor_position() {
-            if let Some(_) = camera.viewport_to_world_2d(camera_transform, cursor_position) {
-                let (_, _, mut click_timer, _) = mouse_query.single_mut();
-                click_timer.timer.reset();
-            }
-        }
-    } else if mouse_input.pressed(MouseButton::Left) && !mouse_input.just_pressed(MouseButton::Left){
-        let (camera, camera_transform) = cameras.single();
-        if let Some(cursor_position) = windows.single().cursor_position() {
-            if let Some(_) = camera.viewport_to_world_2d(camera_transform, cursor_position) {
-                let (mouse, _, click_timer, opt_held) = mouse_query.single();
+            if let Some(position) = camera.viewport_to_world_2d(camera_transform, cursor_position) {
+                let (mouse, click_position, opt_held) = mouse_query.single();
                 if let Some(_) = opt_held {
                 } else {
-                    if click_timer.timer.finished() {
-                        warn!("HOLDING!");
+                    let distance = position.xy().distance(click_position.as_vec2());
+                    if distance > CLICK_ACCURACY {
                         commands.entity(mouse).insert(component::Held);
                     }
                 }
@@ -111,17 +93,21 @@ pub fn select_entities(
         let (camera, camera_transform) = cameras.single();
         if let Some(cursor_position) = windows.single().cursor_position() {
             if let Some(position) = camera.viewport_to_world_2d(camera_transform, cursor_position) {
-                let (mouse, click_position, _, opt_held) = mouse_query.single();
+                let (mouse, click_position, opt_held) = mouse_query.single();
                 if let Some(_) = opt_held {
-                    for (entity, transform, _, opt_selected) in selection_query.iter() {
+                    for (entity, transform, radius, opt_selected) in selection_query.iter() {
                         let start_x = position.x.min(click_position.x);
                         let start_y = position.y.min(click_position.y);
                         let end_x = position.x.max(click_position.x);
                         let end_y = position.y.max(click_position.y);
                         if let None = opt_selected {
-                            //This should check if any part of the entity is within the box  
                             if transform.translation.x >= start_x && transform.translation.x <= end_x {
                                 if transform.translation.y >= start_y && transform.translation.y <= end_y {
+                                    select_event.send(Select(entity));
+                                }
+                            } else {
+                                let distance = transform.translation.xy().distance(position);
+                                if distance < radius.value {
                                     select_event.send(Select(entity));
                                 }
                             }

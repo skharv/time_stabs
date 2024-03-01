@@ -18,7 +18,6 @@ impl Plugin for InputPlugin {
             .add_systems(Update, (
                     mouse::show_hide_box,
                     mouse::select_entities,
-                    mouse::click_tick,
                     keyboard::shift_input,
                     selection,
                     ))
@@ -32,7 +31,6 @@ pub fn selection(
     mut event_reader: EventReader<Select>,
     ) {
     for event in event_reader.read() {
-        info!("selecting {:?} from event!", event.0);
         commands.entity(event.0).insert(component::Selected);
     }
 }
