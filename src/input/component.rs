@@ -15,8 +15,7 @@ pub struct ClickPosition {
 
 impl AsVec2 for ClickPosition {
     fn as_vec2(&self) -> Vec2 {
-        let value = Vec2::new(self.x, self.y);
-        value
+        Vec2::new(self.x, self.y)
     }
 }
 

@@ -1,7 +1,7 @@
 use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
 
 use crate::input::{component, component::AsVec2};
-use super::{Deselect, Select};
+use super::{Deselect, Select, Do};
 
 const BOX_COLOR: Color = Color::rgba(0.0, 1.0, 0.0, 0.25);
 const CLICK_ACCURACY: f32 = 2.0;
@@ -96,15 +96,12 @@ pub fn select_entities(
                 let (mouse, click_position, opt_held) = mouse_query.single();
                 if let Some(_) = opt_held {
                     for (entity, transform, radius, opt_selected) in selection_query.iter() {
-                        let start_x = position.x.min(click_position.x);
-                        let start_y = position.y.min(click_position.y);
-                        let end_x = position.x.max(click_position.x);
-                        let end_y = position.y.max(click_position.y);
+                        let start = Vec2::new(position.x.min(click_position.x), position.y.min(click_position.y));
+                        let end = Vec2::new(position.x.max(click_position.x), position.y.max(click_position.y));
                         if let None = opt_selected {
-                            if transform.translation.x >= start_x && transform.translation.x <= end_x {
-                                if transform.translation.y >= start_y && transform.translation.y <= end_y {
+                            if (transform.translation.x >= start.x && transform.translation.x <= end.x) &&
+                                (transform.translation.y >= start.y && transform.translation.y <= end.y) {
                                     select_event.send(Select(entity));
-                                }
                             } else {
                                 let distance = transform.translation.xy().distance(position);
                                 if distance < radius.value {
@@ -112,10 +109,9 @@ pub fn select_entities(
                                 }
                             }
                         } else {
-                            if transform.translation.x < start_x || transform.translation.x > end_x {
-                                if transform.translation.y < start_y || transform.translation.y > end_y {
+                            if !((transform.translation.x >= start.x && transform.translation.x <= end.x) &&
+                                (transform.translation.y >= start.y && transform.translation.y <= end.y)) {
                                     deselect_event.send(Deselect(entity));
-                                }
                             }
                         }
                     }
@@ -139,4 +135,18 @@ pub fn select_entities(
     }
 }
 
-
+pub fn act(
+    mut do_writer: EventWriter<Do>,
+    windows: Query<&Window>,
+    cameras: Query<(&Camera, &GlobalTransform)>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
+    ) {
+    if mouse_input.just_pressed(MouseButton::Right) {
+        let (camera, camera_transform) = cameras.single();
+        if let Some(cursor_position) = windows.single().cursor_position() {
+            if let Some(position) = camera.viewport_to_world_2d(camera_transform, cursor_position) {
+                do_writer.send(super::Do(super::Action::Move, position.xy()));
+            }
+        }
+    }
+}
