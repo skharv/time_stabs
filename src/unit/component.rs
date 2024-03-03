@@ -73,3 +73,8 @@ pub struct History {
 pub struct Repeat {
     pub timestamp: f32
 }
+
+#[derive(Component)]
+pub struct Reverse {
+    pub timestamp: f32
+}

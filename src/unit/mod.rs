@@ -20,6 +20,8 @@ impl Plugin for UnitPlugin {
                     action::read_action,
                     history::track_history,
                     history::repeat_history,
+                    history::start_repeat,
+                    history::start_reverse,
                     movement::arrive,
                     movement::direct_movement.after(collision::collision),
                     movement::calculate_direct_velocity,

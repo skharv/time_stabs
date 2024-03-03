@@ -18,6 +18,12 @@ pub struct Do(pub Action, pub Vec2);
 #[derive(Event)]
 pub struct Queue(pub Action, pub Vec2);
 
+#[derive(Event)]
+pub struct Repeat(pub Entity, pub bool);
+
+#[derive(Event)]
+pub struct Reverse(pub Entity, pub bool);
+
 pub struct InputPlugin;
 
 impl Plugin for InputPlugin {
@@ -33,7 +39,9 @@ impl Plugin for InputPlugin {
                     ))
             .add_event::<Select>()
             .add_event::<Deselect>()
-            .add_event::<Do>();
+            .add_event::<Do>()
+            .add_event::<Repeat>()
+            .add_event::<Reverse>();
     }
 }
 

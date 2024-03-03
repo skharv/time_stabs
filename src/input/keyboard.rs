@@ -1,7 +1,7 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
 
-use super::component;
-use crate::unit::component::{Ghost, Repeat};
+use super::{component::{Selected, Selectable}, Reverse, Repeat};
+use crate::unit::component;
 
 const UP: KeyCode = KeyCode::KeyW;
 const DOWN: KeyCode = KeyCode::KeyS;
@@ -18,27 +18,37 @@ pub fn shift_input(
     ) {
     for event in reader.read() {
         if !keyboard_input.pressed(SHIFT) {
-            commands.entity(event.0).remove::<component::Selected>();
+            commands.entity(event.0).remove::<Selected>();
         }
     }
 }
 
 pub fn control_input(
-    mut commands: Commands,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    query: Query<(Entity, &Handle<ColorMaterial>), With<component::Selected>>,
+    mut reverse_writer: EventWriter<Reverse>,
+    mut repeat_writer: EventWriter<Repeat>,
+    query: Query<Entity, (With<component::Unit>, With<Selected>, With<component::History>)>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
     ) {
     if keyboard_input.just_pressed(CONTROL) {
-        for (entity, handle) in query.iter() {
-            if let Some(material) = materials.get_mut(handle) {
-                material.color = Color::rgba(0.5, 0.5, 1.0, 0.5);
+        if !keyboard_input.pressed(SHIFT){
+            for entity in query.iter() {
+                repeat_writer.send(Repeat(entity, false));
             }
-            commands.entity(entity).remove::<component::Selected>();
-            commands.entity(entity).remove::<component::Selectable>();
-            commands.entity(entity).insert(Ghost);
-            commands.entity(entity).insert(Repeat{timestamp: time.elapsed_seconds()});
+        } else {
+            for entity in query.iter() {
+                repeat_writer.send(Repeat(entity, true));
+            }
+        }
+    }
+    if keyboard_input.just_pressed(CANCEL) {
+        if !keyboard_input.pressed(SHIFT){
+            for entity in query.iter() {
+                reverse_writer.send(Reverse(entity, false));
+            }
+        } else {
+            for entity in query.iter() {
+                reverse_writer.send(Reverse(entity, true));
+            }
         }
     }
 }

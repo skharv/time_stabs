@@ -4,7 +4,7 @@ use crate::input::Do;
 use super::component;
 use crate::input::component::Selected;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Action {
     Idle,
     Move,
