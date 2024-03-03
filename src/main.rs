@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 mod input;
 mod unit;
+mod bullet;
 
 fn main() {
     let mut app = App::new();
@@ -10,6 +11,7 @@ fn main() {
         (DefaultPlugins,
          input::InputPlugin,
          unit::UnitPlugin,
+         bullet::BulletPlugin,
         ))
         .add_systems(Startup, spawn_camera)
         .run();

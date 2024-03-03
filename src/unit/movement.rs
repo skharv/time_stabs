@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
-use super::{component, component::AsVec2, action::Action};
+use super::{component, component::AsVec2, action::Action, State};
 
 const ARRIVAL_DISTANCE: f32 = 1.0;
 
-pub fn direct_movement(
+pub fn apply_velocity(
     time: Res<Time>,
     mut query: Query<(&mut Transform, &mut component::Velocity), (With<component::Unit>, Without<component::Ghost>)>,
     ) {
@@ -17,28 +17,28 @@ pub fn direct_movement(
 }
 
 pub fn calculate_direct_velocity(
-    mut query: Query<(&mut component::Velocity, &component::MoveSpeed, &component::State, &component::Target, &Transform), (With<component::Unit>, Without<component::Ghost>)>,
+    mut query: Query<(&mut component::Velocity, &component::MoveSpeed, &component::CurrentState, &Transform), (With<component::Unit>, Without<component::Ghost>)>,
     ) {
-    for (mut velocity, move_speed, state, target, transform) in query.iter_mut() {
-        if state.value != Action::Move {
+    for (mut velocity, move_speed, state, transform) in query.iter_mut() {
+        if state.value != State::Move {
             continue;
         }
-        let direction = (target.as_vec2() - transform.translation.truncate()).normalize();
+        let direction = (transform.rotation * Vec3::Y).truncate().normalize();
         velocity.x = direction.x * move_speed.value;
         velocity.y = direction.y * move_speed.value;
     }
 }
 
 pub fn arrive(
-    mut query: Query<(&mut component::Velocity, &mut component::State, &component::Target, &Transform), (With<component::Unit>, Without<component::Ghost>)>,
+    mut query: Query<(&mut component::Velocity, &mut component::CurrentState, &component::Target, &Transform), (With<component::Unit>, Without<component::Ghost>)>,
     ) {
     for (mut velocity, mut state, target, transform) in query.iter_mut() {
-        if state.value != Action::Move {
+        if state.value != State::Move {
             continue;
         }
         let distance = transform.translation.xy().distance(target.as_vec2());
         if distance < ARRIVAL_DISTANCE {
-            state.value = Action::Idle;
+            state.value = State::Idle;
             velocity.x = 0.0;
             velocity.y = 0.0;
         }
@@ -68,9 +68,12 @@ fn face_point(
 
 pub fn turn_towards_target(
     time: Res<Time>,
-    mut query: Query<(&mut Transform, &component::TurnRate, &component::Target), With<component::Unit>>,
+    mut query: Query<(&mut Transform, &component::TurnRate, &component::Target, &component::CurrentState), (With<component::Unit>, Without<component::Ghost>)>,
     ) {
-    for (mut transform, turn_rate, target) in query.iter_mut() {
+    for (mut transform, turn_rate, target, state) in query.iter_mut() {
+        if state.value != State::Move {
+            continue;
+        }
         let turn_amount = turn_rate.value * time.delta_seconds();
         face_point(&mut transform, turn_amount, target.as_vec2().extend(0.0));
     }

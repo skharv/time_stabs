@@ -1,8 +1,10 @@
 use std::collections::VecDeque;
 
-use bevy::prelude::*;
+use bevy::prelude::{Component, Vec2};
+use bevy::time::Timer;
 
 use super::action::Action;
+use super::State;
 use super::history::Snapshot;
 
 pub trait AsVec2 {
@@ -26,8 +28,8 @@ pub struct Facing {
 }
 
 #[derive(Component)]
-pub struct State {
-    pub value: Action
+pub struct CurrentState {
+    pub value: State
 }
 
 #[derive(Component)]
@@ -77,4 +79,14 @@ pub struct Repeat {
 #[derive(Component)]
 pub struct Reverse {
     pub timestamp: f32
+}
+
+#[derive(Component)]
+pub struct CurrentAction {
+    pub value: Action
+}
+
+#[derive(Component)]
+pub struct Attack {
+    pub timer: Timer
 }

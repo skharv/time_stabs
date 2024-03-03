@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::unit::action::Action;
+use crate::unit::State;
 
 pub mod component;
 mod keyboard;
@@ -13,10 +13,10 @@ pub struct Select(Entity);
 pub struct Deselect(Entity);
 
 #[derive(Event)]
-pub struct Do(pub Action, pub Vec2);
+pub struct Do(pub State, pub Vec2);
 
 #[derive(Event)]
-pub struct Queue(pub Action, pub Vec2);
+pub struct Queue(pub State, pub Vec2);
 
 #[derive(Event)]
 pub struct Repeat(pub Entity, pub bool);
@@ -33,6 +33,7 @@ impl Plugin for InputPlugin {
                     mouse::show_hide_box,
                     mouse::select_entities,
                     mouse::act,
+                    keyboard::shoot,
                     keyboard::shift_input,
                     keyboard::control_input,
                     selection,
