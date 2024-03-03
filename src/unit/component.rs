@@ -90,3 +90,14 @@ pub struct CurrentAction {
 pub struct Attack {
     pub timer: Timer
 }
+
+#[derive(Component)]
+pub struct AnimationIndices {
+    pub first: usize,
+    pub last: usize
+}
+
+#[derive(Component)]
+pub struct AnimationTimer {
+    pub timer: Timer
+}

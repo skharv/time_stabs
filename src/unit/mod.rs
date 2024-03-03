@@ -1,5 +1,5 @@
 use std::{collections::VecDeque, f32::consts::PI};
-use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
+use bevy::prelude::*;
 use crate::input::component::{Selectable, Selected};
 
 pub mod action;
@@ -25,6 +25,7 @@ impl Plugin for UnitPlugin {
             .add_systems(Update, (
                     draw_gizmo,
                     gizmo_config,
+                    animate_sprite,
                     action::read_action,
                     action::attack,
                     history::track_history,
@@ -42,46 +43,72 @@ impl Plugin for UnitPlugin {
 
 pub fn spawn(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     ) {
-    let unit_radius = 10.0;
+    let unit_radius = 25.0;
     for n in 0..10 {
-        let mut spawn_transform = Transform::from_xyz((n * 20) as f32, (n * 20) as f32, 0.0);
-        spawn_transform.rotate_z((2.0 * PI / 10.0) * n as f32);
-        commands.spawn((MaterialMesh2dBundle {
-            mesh: Mesh2dHandle(meshes.add(Circle { radius: unit_radius })),
-            material: materials.add(Color::WHITE),
-            transform: spawn_transform,
-            ..default()
-        },
-        Selectable,
-        component::Unit,
-        component::Radius { value: unit_radius },
-        component::Velocity { x: 0.0, y: 0.0 },
-        component::MoveSpeed { value: 100.0 },
-        component::TurnRate { value: 10.0 },
-        component::Target { x: 0.0, y: 0.0 },
-        component::CurrentAction { value: action::Action::None },
-        component::Attack { timer: Timer::from_seconds(5.0, TimerMode::Once) },
-        component::CurrentState { value: State::Idle },
-        component::History { snapshots: VecDeque::new() },
-        ));
+        let texture = asset_server.load::<Image>("marine.png");
+        let layout = TextureAtlasLayout::from_grid(Vec2::new(100.0, 100.0), 8, 8, None, None);
+        let texture_atlas_layout = texture_atlas_layouts.add(layout);
+        let spawn_transform = Transform::from_xyz((n * 30) as f32, (n * 30) as f32, 0.0);
+        commands.spawn((
+                SpriteSheetBundle {
+                    texture,
+                    atlas: TextureAtlas {
+                        layout: texture_atlas_layout,
+                        index: 0,
+                    },
+                    transform: spawn_transform,
+                    ..default()
+                },
+                Selectable,
+                component::Unit,
+                component::Radius { value: unit_radius },
+                component::Velocity { x: 0.0, y: 0.0 },
+                component::MoveSpeed { value: 100.0 },
+                component::Facing { value: (2.0 * PI / 10.0) * n as f32 },
+                component::TurnRate { value: 10.0 },
+                component::Target { x: 0.0, y: 0.0 },
+                component::CurrentAction { value: action::Action::None },
+                component::Attack { timer: Timer::from_seconds(5.0, TimerMode::Once) },
+                component::CurrentState { value: State::Idle },
+                component::History { snapshots: VecDeque::new() },
+                component::AnimationIndices { first: 0, last: 7 },
+                component::AnimationTimer { timer: Timer::from_seconds(0.1, TimerMode::Repeating) },
+                ));
     }
 }
 
+pub fn animate_sprite(
+    time: Res<Time>,
+    mut query: Query<(&mut TextureAtlas, &mut component::AnimationIndices, &mut component::AnimationTimer), With<component::Unit>>,
+    ) {
+    for (mut atlas, mut indices, mut timer) in query.iter_mut() {
+        timer.timer.tick(time.delta());
+        if timer.timer.finished() {
+            atlas.index = if atlas.index == indices.last {
+                indices.first
+            } else {
+                atlas.index + 1
+            };
+        }
+    }
+}
+
+
 pub fn draw_gizmo(
     mut gizmos: Gizmos,
-    query: Query<&Transform, With<Selected>>
+    query: Query<(&Transform, &component::Facing), With<Selected>>
     ) {
-    for transform in query.iter() {
-        let direction = (transform.rotation * Vec3::Y).truncate().normalize();
-        gizmos.circle_2d(transform.translation.xy(), 15.5, Color::GREEN);
-        gizmos.line_2d(
-            transform.translation.xy(),
-            transform.translation.xy() + Vec2::new(direction.x, direction.y) * 25.0,
-            Color::BLUE,
-        );
+    for (transform, facing) in query.iter() {
+        let direction = Vec2::new(facing.value.cos(), facing.value.sin());
+        gizmos.circle_2d(transform.translation.xy(), 25.0, Color::GREEN);
+        //gizmos.line_2d(
+        //    transform.translation.xy(),
+        //    transform.translation.xy() + Vec2::new(direction.x, direction.y) * 25.0,
+        //    Color::BLUE,
+        //    );
     }
 }
 
