@@ -13,14 +13,15 @@ pub struct Snapshot {
     pub state: super::State,
     pub timestamp: f32,
     pub position: Vec3,
+    pub facing: f32,
     pub direction: f32,
 }
 
 pub fn track_history(
-    mut queue: Query<(&mut component::History, &TextureAtlas, &Transform, &component::CurrentState, &component::CurrentAction), (With<component::Unit>, Without<component::Repeat>, Without<component::Reverse>)>,
+    mut queue: Query<(&mut component::History, &TextureAtlas, &Transform, &component::Facing, &component::CurrentState, &component::CurrentAction), (With<component::Unit>, Without<component::Repeat>, Without<component::Reverse>)>,
     time: Res<Time>,
     ) {
-    for (mut history, atlas, transform, state, action) in queue.iter_mut() {
+    for (mut history, atlas, transform, facing, state, action) in queue.iter_mut() {
         let z = transform.rotation.to_euler(EulerRot::XYZ).2;
         history.snapshots.push_back(Snapshot {
             atlas_index: atlas.index,
@@ -28,6 +29,7 @@ pub fn track_history(
             state: state.value,
             timestamp: time.elapsed_seconds(),
             position: transform.translation,
+            facing: facing.value,
             direction: z,
         });
     }
@@ -35,9 +37,9 @@ pub fn track_history(
 
 pub fn repeat_history(
     mut commands: Commands,
-    mut queue: Query<(Entity, &mut Sprite, &mut Transform, &mut component::History, &mut TextureAtlas, &mut component::CurrentState, &mut component::CurrentAction, Option<&component::Repeat>, Option<&component::Reverse>), (With<component::Unit>, With<component::Ghost>)>,
+    mut queue: Query<(Entity, &mut Sprite, &mut Transform, &mut component::Facing, &mut component::History, &mut TextureAtlas, &mut component::CurrentState, &mut component::CurrentAction, Option<&component::Repeat>, Option<&component::Reverse>), (With<component::Unit>, With<component::Ghost>)>,
     ) {
-    for (entity, mut sprite, mut transform, mut history, mut atlas, mut state, mut action, opt_repeat, opt_reverse) in queue.iter_mut() {
+    for (entity, mut sprite, mut transform, mut facing, mut history, mut atlas, mut state, mut action, opt_repeat, opt_reverse) in queue.iter_mut() {
         if let Some(_) = opt_repeat {
             if let Some(snapshot) = history.snapshots.pop_front() {
                 let mut historical_transform = Transform::from_translation(snapshot.position);
@@ -46,6 +48,7 @@ pub fn repeat_history(
                 state.value = snapshot.state;
                 action.value = snapshot.action;
                 atlas.index = snapshot.atlas_index;
+                facing.value = snapshot.facing;
                 if action.value == super::action::Action::Attack {
                     warn!("Repeat Attack");
                 }
@@ -64,6 +67,7 @@ pub fn repeat_history(
                 state.value = snapshot.state;
                 action.value = snapshot.action;
                 atlas.index = snapshot.atlas_index;
+                facing.value = snapshot.facing;
                 if action.value == super::action::Action::Attack {
                     warn!("Reverse Attack");
                 }
