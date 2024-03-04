@@ -54,6 +54,10 @@ pub fn spawn(
         let spawn_transform = Transform::from_xyz((n * 30) as f32, (n * 30) as f32, 0.0);
         commands.spawn((
                 SpriteSheetBundle {
+                    sprite: Sprite {
+                        color: Color::WHITE,
+                        ..default()
+                    },
                     texture,
                     atlas: TextureAtlas {
                         layout: texture_atlas_layout,
@@ -74,24 +78,35 @@ pub fn spawn(
                 component::Attack { timer: Timer::from_seconds(5.0, TimerMode::Once) },
                 component::CurrentState { value: State::Idle },
                 component::History { snapshots: VecDeque::new() },
-                component::AnimationIndices { first: 0, last: 7 },
+                component::AnimationIndices { current: 0, first: 0, last: 7 },
                 component::AnimationTimer { timer: Timer::from_seconds(0.1, TimerMode::Repeating) },
                 ));
     }
 }
 
+fn angle_to_direction(angle: f32) -> usize {
+    let angle_positive = (angle + (2.0 * PI)) % (2.0 * PI);
+    let index = ((angle_positive + PI / 8.0) % (2.0 * PI) / (PI / 4.0)) as usize;
+    index
+}
+
 pub fn animate_sprite(
     time: Res<Time>,
-    mut query: Query<(&mut TextureAtlas, &mut component::AnimationIndices, &mut component::AnimationTimer), With<component::Unit>>,
+    mut query: Query<(&mut TextureAtlas, &mut component::AnimationIndices, &mut component::AnimationTimer, &component::Facing, &component::CurrentState), (With<component::Unit>, Without<component::Ghost>)>,
     ) {
-    for (mut atlas, mut indices, mut timer) in query.iter_mut() {
+    for (mut atlas, mut indices, mut timer, facing, state) in query.iter_mut() {
+        let direction = angle_to_direction(facing.value);
+        if state.value != State::Move {
+            atlas.index = direction * 8;
+            continue;
+        }
         timer.timer.tick(time.delta());
         if timer.timer.finished() {
-            atlas.index = if atlas.index == indices.last {
-                indices.first
-            } else {
-                atlas.index + 1
-            };
+            indices.current += 1;
+            if indices.current > indices.last {
+                indices.current = indices.first;
+            }
+            atlas.index = direction * 8 + indices.current;
         }
     }
 }
@@ -99,16 +114,10 @@ pub fn animate_sprite(
 
 pub fn draw_gizmo(
     mut gizmos: Gizmos,
-    query: Query<(&Transform, &component::Facing), With<Selected>>
+    query: Query<&Transform, With<Selected>>
     ) {
-    for (transform, facing) in query.iter() {
-        let direction = Vec2::new(facing.value.cos(), facing.value.sin());
-        gizmos.circle_2d(transform.translation.xy(), 25.0, Color::GREEN);
-        //gizmos.line_2d(
-        //    transform.translation.xy(),
-        //    transform.translation.xy() + Vec2::new(direction.x, direction.y) * 25.0,
-        //    Color::BLUE,
-        //    );
+    for transform in query.iter() {
+        gizmos.circle_2d(transform.translation.xy() - Vec2::new(0.0, 25.0), 25.0, Color::GREEN);
     }
 }
 

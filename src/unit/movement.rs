@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::{component, component::AsVec2, State};
 
-const ARRIVAL_DISTANCE: f32 = 1.0;
+const ARRIVAL_DISTANCE: f32 = 5.0;
 
 pub fn apply_velocity(
     time: Res<Time>,
@@ -11,6 +11,7 @@ pub fn apply_velocity(
     for (mut transform, mut velocity) in query.iter_mut() {
         transform.translation.x += velocity.x * time.delta_seconds();
         transform.translation.y += velocity.y * time.delta_seconds();
+        transform.translation.z = -transform.translation.y;
         velocity.x = 0.0;
         velocity.y = 0.0;
     }

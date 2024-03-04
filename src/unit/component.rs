@@ -93,6 +93,7 @@ pub struct Attack {
 
 #[derive(Component)]
 pub struct AnimationIndices {
+    pub current: usize,
     pub first: usize,
     pub last: usize
 }
