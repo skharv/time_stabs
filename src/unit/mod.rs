@@ -27,9 +27,6 @@ impl Plugin for UnitPlugin {
                     gizmo_config,
                     animate_sprite,
                     action::read_action,
-                    action::attack,
-                    history::track_history,
-                    history::repeat_history,
                     history::start_repeat,
                     history::start_reverse,
                     movement::arrive,
@@ -37,6 +34,11 @@ impl Plugin for UnitPlugin {
                     movement::calculate_direct_velocity.after(movement::turn_towards_target),
                     movement::turn_towards_target,
                     collision::collision.after(movement::calculate_direct_velocity),
+                    ))
+            .add_systems(FixedUpdate, (
+                    action::attack,
+                    history::track_history,
+                    history::repeat_history,
                     ));
     }
 }
@@ -70,7 +72,7 @@ pub fn spawn(
                 component::Unit,
                 component::Radius { value: unit_radius },
                 component::Velocity { x: 0.0, y: 0.0 },
-                component::MoveSpeed { value: 100.0 },
+                component::MoveSpeed { value: 200.0 },
                 component::Facing { value: (2.0 * PI / 10.0) * n as f32 },
                 component::TurnRate { value: 10.0 },
                 component::Target { x: 0.0, y: 0.0 },
@@ -79,7 +81,7 @@ pub fn spawn(
                 component::CurrentState { value: State::Idle },
                 component::History { snapshots: VecDeque::new() },
                 component::AnimationIndices { current: 0, first: 0, last: 7 },
-                component::AnimationTimer { timer: Timer::from_seconds(0.1, TimerMode::Repeating) },
+                component::AnimationTimer { timer: Timer::from_seconds(0.08, TimerMode::Repeating) },
                 ));
     }
 }
