@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use bevy::prelude::{Component, Vec2};
+use bevy::prelude::{Component, Vec2, Entity};
 use bevy::time::Timer;
 
 use super::action::Action;
@@ -17,7 +17,12 @@ pub struct Radius{
 }
 
 #[derive(Component)]
-pub struct Unit;
+pub struct Unit {
+    pub owner: usize
+}
+
+#[derive(Component)]
+pub struct Enemy;
 
 #[derive(Component)]
 pub struct Ghost;
@@ -56,6 +61,7 @@ pub struct MoveSpeed {
 
 #[derive(Component)]
 pub struct Target {
+    pub entity: Option<Entity>,
     pub x: f32,
     pub y: f32
 }
@@ -88,6 +94,7 @@ pub struct CurrentAction {
 
 #[derive(Component)]
 pub struct Attack {
+    pub range: f32,
     pub timer: Timer
 }
 

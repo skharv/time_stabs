@@ -140,12 +140,15 @@ pub fn act(
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
     mouse_input: Res<ButtonInput<MouseButton>>,
+    selection_query: Query<Entity, With<component::Selected>>,
     ) {
     if mouse_input.just_pressed(MouseButton::Right) {
         let (camera, camera_transform) = cameras.single();
         if let Some(cursor_position) = windows.single().cursor_position() {
             if let Some(position) = camera.viewport_to_world_2d(camera_transform, cursor_position) {
-                do_writer.send(super::Do(super::State::Move, position.xy()));
+                for entity in selection_query.iter() {
+                    do_writer.send(super::Do(entity, super::State::Move, position.xy()));
+                }
             }
         }
     }

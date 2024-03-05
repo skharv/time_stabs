@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use crate::input::Do;
 use super::State;
-use super::component;
+use super::{component, component::AsVec2};
 use crate::input::component::Selected;
 use crate::bullet::Fire;
 
@@ -19,22 +19,22 @@ pub enum Action {
 
 pub fn read_action(
     mut do_event: EventReader<Do>,
-    mut query: Query<(&mut component::Target, &mut component::CurrentState, &mut component::CurrentAction), (With<component::Unit>, With<Selected>)>,
+    mut query: Query<(&mut component::Target, &mut component::CurrentState, &mut component::CurrentAction), With<component::Unit>>,
     ) {
     for event in do_event.read() {
-        match event.0 {
+        match event.1 {
             State::Move => {
-                for (mut target, mut state, mut action) in query.iter_mut() {
-                    target.x = event.1.x;
-                    target.y = event.1.y;
+                if let Ok((mut target, mut state, mut action)) = query.get_mut(event.0) {
+                    target.x = event.2.x;
+                    target.y = event.2.y;
                     state.value = State::Move;
                     action.value = Action::None;
                 }
             },
             State::Attack => {
-                for (mut target, mut state, mut action) in query.iter_mut() {
-                    target.x = event.1.x;
-                    target.y = event.1.y;
+                if let Ok((mut target, mut state, mut action)) = query.get_mut(event.0) {
+                    target.x = event.2.x;
+                    target.y = event.2.y;
                     state.value = State::Attack;
                     action.value = Action::Attack;
                 }
@@ -46,10 +46,10 @@ pub fn read_action(
 
 pub fn attack(
     mut fire_writer: EventWriter<Fire>,
-    mut query: Query<(&mut component::CurrentAction, &component::CurrentState, &mut component::Attack, &Transform, &component::Facing), With<component::Unit>>,
+    mut query: Query<(&mut component::CurrentAction, &component::CurrentState, &mut component::Attack, &Transform, &mut component::Facing, &component::Target), With<component::Unit>>,
     time: Res<Time>,
     ) {
-    for (mut action, state, mut attack, transform, facing) in query.iter_mut() {
+    for (mut action, state, mut attack, transform, mut facing, target) in query.iter_mut() {
         if action.value == Action::Attack {
             fire_writer.send(Fire(Vec2::new(transform.translation.x, transform.translation.y), facing.value - (PI / 2.0)));
             action.value = Action::None;
@@ -61,6 +61,30 @@ pub fn attack(
                 action.value = Action::Attack;
             } else {
                 action.value = Action::None;
+            }
+        }
+    }
+}
+
+pub fn engage(
+    mut do_writer: EventWriter<Do>,
+    mut query: Query<(Entity, &Transform, &mut component::CurrentState, &component::Unit, &mut component::Target, &component::Attack)>,
+    ) {
+    let mut combinations = query.iter_combinations_mut();
+    while let Some([mut unit1, mut unit2]) = combinations.fetch_next() {
+        if unit1.3.owner == unit2.3.owner {
+            continue;
+        }
+        if unit1.2.value == State::AttackMove || unit1.2.value == State::Idle {
+            if unit1.1.translation.xy().distance(unit2.1.translation.xy()) <= unit1.5.range {
+                unit1.4.entity = Some(unit2.0);           
+                do_writer.send(Do(unit1.0, State::Attack, unit2.1.translation.xy()));
+            }
+        }
+        if unit2.2.value == State::AttackMove || unit2.2.value == State::Idle {
+            if unit2.1.translation.xy().distance(unit1.1.translation.xy()) <= unit2.5.range {
+                unit2.4.entity = Some(unit1.0);
+                do_writer.send(Do(unit2.0, State::Attack, unit1.1.translation.xy()));
             }
         }
     }

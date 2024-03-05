@@ -13,10 +13,10 @@ pub struct Select(Entity);
 pub struct Deselect(Entity);
 
 #[derive(Event)]
-pub struct Do(pub State, pub Vec2);
+pub struct Do(pub Entity, pub State, pub Vec2);
 
 #[derive(Event)]
-pub struct Queue(pub State, pub Vec2);
+pub struct Queue(pub Entity, pub State, pub Vec2);
 
 #[derive(Event)]
 pub struct Repeat(pub Entity, pub bool);

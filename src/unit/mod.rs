@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::input::component::{Selectable, Selected};
 
 pub mod action;
+mod animation;
 pub mod component;
 mod collision;
 mod history;
@@ -12,6 +13,7 @@ mod movement;
 pub enum State {
     Idle,
     Move,
+    AttackMove,
     Attack,
     Stop,
     Halt,
@@ -21,12 +23,12 @@ pub struct UnitPlugin;
 
 impl Plugin for UnitPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn)
+        app.add_systems(Startup, (spawn, spawn_enemy))
             .add_systems(Update, (
-                    draw_gizmo,
-                    gizmo_config,
-                    animate_sprite,
+                    show_selection,
+                    animation::animate_texture_atlas,
                     action::read_action,
+                    action::engage,
                     history::start_repeat,
                     history::start_reverse,
                     movement::arrive,
@@ -54,7 +56,7 @@ pub fn spawn(
         let layout = TextureAtlasLayout::from_grid(Vec2::new(100.0, 100.0), 8, 8, None, None);
         let texture_atlas_layout = texture_atlas_layouts.add(layout);
         let spawn_transform = Transform::from_xyz((n * 30) as f32, (n * 30) as f32, 0.0);
-        commands.spawn((
+        let parent = commands.spawn((
                 SpriteSheetBundle {
                     sprite: Sprite {
                         color: Color::WHITE,
@@ -69,63 +71,93 @@ pub fn spawn(
                     ..default()
                 },
                 Selectable,
-                component::Unit,
+                component::Unit{ owner: 0 },
                 component::Radius { value: unit_radius },
                 component::Velocity { x: 0.0, y: 0.0 },
                 component::MoveSpeed { value: 200.0 },
                 component::Facing { value: (2.0 * PI / 10.0) * n as f32 },
                 component::TurnRate { value: 10.0 },
-                component::Target { x: 0.0, y: 0.0 },
+                component::Target { entity: None, x: 0.0, y: 0.0 },
                 component::CurrentAction { value: action::Action::None },
-                component::Attack { timer: Timer::from_seconds(5.0, TimerMode::Once) },
+                component::Attack { range: 500.0, timer: Timer::from_seconds(5.0, TimerMode::Once) },
                 component::CurrentState { value: State::Idle },
                 component::History { snapshots: VecDeque::new() },
                 component::AnimationIndices { current: 0, first: 0, last: 7 },
                 component::AnimationTimer { timer: Timer::from_seconds(0.08, TimerMode::Repeating) },
-                ));
+                )).id();
+
+        let child_texture = asset_server.load::<Image>("selection_circle.png");
+        let child = commands.spawn(
+            SpriteBundle {
+                sprite: Sprite {
+                    color: Color::WHITE,
+                    ..default()
+                },
+                texture: child_texture,
+                transform: Transform::from_xyz(0.0, -25.0, -100.0),
+                visibility: Visibility::Hidden,
+                ..default()
+            }).id();
+
+        commands.entity(parent).add_child(child);
     }
 }
 
-fn angle_to_direction(angle: f32) -> usize {
-    let angle_positive = (angle + (2.0 * PI)) % (2.0 * PI);
-    let index = ((angle_positive + PI / 8.0) % (2.0 * PI) / (PI / 4.0)) as usize;
-    index
-}
-
-pub fn animate_sprite(
-    time: Res<Time>,
-    mut query: Query<(&mut TextureAtlas, &mut component::AnimationIndices, &mut component::AnimationTimer, &component::Facing, &component::CurrentState), (With<component::Unit>, Without<component::Ghost>)>,
+pub fn show_selection(
+    unit_query: Query<(&Children, Option<&Selected>), With<component::Unit>>,
+    mut child_query: Query<&mut Visibility, Without<component::Unit>>,
     ) {
-    for (mut atlas, mut indices, mut timer, facing, state) in query.iter_mut() {
-        let direction = angle_to_direction(facing.value);
-        if state.value != State::Move {
-            atlas.index = direction * 8;
-            continue;
-        }
-        timer.timer.tick(time.delta());
-        if timer.timer.finished() {
-            indices.current += 1;
-            if indices.current > indices.last {
-                indices.current = indices.first;
+    for (children, opt_selected) in unit_query.iter() {
+        for &child in children.iter() {
+            if let Ok(mut visibility) = child_query.get_mut(child) {
+                if let Some(_) = opt_selected {
+                    *visibility = Visibility::Visible;
+                } else {
+                    *visibility = Visibility::Hidden;
+                }
             }
-            atlas.index = direction * 8 + indices.current;
         }
     }
 }
 
-
-pub fn draw_gizmo(
-    mut gizmos: Gizmos,
-    query: Query<&Transform, With<Selected>>
+pub fn spawn_enemy(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     ) {
-    for transform in query.iter() {
-        gizmos.circle_2d(transform.translation.xy() - Vec2::new(0.0, 25.0), 25.0, Color::GREEN);
-    }
-}
+    let unit_radius = 25.0;
+    let texture = asset_server.load::<Image>("marine.png");
+    let layout = TextureAtlasLayout::from_grid(Vec2::new(100.0, 100.0), 8, 8, None, None);
+    let texture_atlas_layout = texture_atlas_layouts.add(layout);
+    let spawn_transform = Transform::from_xyz(-100.0, -100.0, 0.0);
+    commands.spawn((
+            SpriteSheetBundle {
+                sprite: Sprite {
+                    color: Color::RED,
+                    ..default()
+                },
+                texture,
+                atlas: TextureAtlas {
+                    layout: texture_atlas_layout,
+                    index: 0,
+                },
+                transform: spawn_transform,
+                ..default()
+            },
+            component::Unit { owner: 1 },
+            component::Enemy,
+            component::Radius { value: unit_radius },
+            component::Velocity { x: 0.0, y: 0.0 },
+            component::MoveSpeed { value: 200.0 },
+            component::Facing { value: 0.0 },
+            component::TurnRate { value: 10.0 },
+            component::Target { entity: None, x: 0.0, y: 0.0 },
+            component::CurrentAction { value: action::Action::None },
+            component::Attack { range: 500.0, timer: Timer::from_seconds(5.0, TimerMode::Once) },
+            component::CurrentState { value: State::Idle },
+            component::History { snapshots: VecDeque::new() },
+            component::AnimationIndices { current: 0, first: 0, last: 7 },
+            component::AnimationTimer { timer: Timer::from_seconds(0.08, TimerMode::Repeating) },
+            ));
 
-pub fn gizmo_config(
-    mut config_store: ResMut<GizmoConfigStore>,
-    ) {
-        let (config, _) = config_store.config_mut::<DefaultGizmoConfigGroup>();
-        config.line_width = 1.0;
 }
