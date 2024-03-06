@@ -39,6 +39,15 @@ pub fn read_action(
                     action.value = Action::Attack;
                 }
             },
+            State::Idle => {
+                if let Ok((mut target, mut state, mut action)) = query.get_mut(event.0) {
+                    target.x = event.2.x;
+                    target.y = event.2.y;
+                    target.entity = None;
+                    state.value = State::Idle;
+                    action.value = Action::None;
+                }
+            },
             _ => {}
         }
     }
@@ -46,21 +55,24 @@ pub fn read_action(
 
 pub fn attack(
     mut fire_writer: EventWriter<Fire>,
-    mut query: Query<(&mut component::CurrentAction, &component::CurrentState, &mut component::Attack, &Transform, &mut component::Facing, &component::Target), With<component::Unit>>,
+    mut query: Query<(&mut component::CurrentAction, &component::CurrentState, &mut component::Attack, &Transform, &component::Facing, &component::Target), With<component::Unit>>,
     time: Res<Time>,
     ) {
-    for (mut action, state, mut attack, transform, mut facing, target) in query.iter_mut() {
+    for (mut action, state, mut attack, transform, facing, target) in query.iter_mut() {
         if action.value == Action::Attack {
-            fire_writer.send(Fire(Vec2::new(transform.translation.x, transform.translation.y), facing.value - (PI / 2.0)));
-            action.value = Action::None;
-            attack.timer.reset();
+            let forward = Vec2::new(facing.value.cos(), facing.value.sin()).normalize();
+            let to_target = (target.as_vec2() - transform.translation.xy()).normalize();
+            let forward_dot_target = forward.dot(to_target);
+            if (forward_dot_target - 1.0).abs() < f32::EPSILON {
+                fire_writer.send(Fire(transform.translation.xy() + (to_target * 50.0), facing.value - (PI / 2.0)));
+                action.value = Action::None;
+                attack.timer.reset();
+            }
         }
         if state.value == State::Attack {
             attack.timer.tick(time.delta());
             if attack.timer.finished() {
                 action.value = Action::Attack;
-            } else {
-                action.value = Action::None;
             }
         }
     }

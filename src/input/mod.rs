@@ -34,6 +34,7 @@ impl Plugin for InputPlugin {
                     mouse::select_entities,
                     mouse::act,
                     keyboard::shoot,
+                    keyboard::stop,
                     keyboard::shift_input,
                     keyboard::control_input,
                     selection,

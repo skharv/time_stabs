@@ -46,7 +46,7 @@ pub fn arrive(
     }
 }
 
-fn rotate_facing(
+pub fn rotate_facing(
     current_point: Vec3,
     facing: f32,
     turn_amount: f32,
@@ -73,9 +73,6 @@ pub fn turn_towards_target(
     mut query: Query<(&Transform, &component::TurnRate, &mut component::Facing, &component::Target, &component::CurrentState), (With<component::Unit>, Without<component::Ghost>)>,
     ) {
     for (transform, turn_rate, mut facing, target, state) in query.iter_mut() {
-        if state.value != State::Move {
-            continue;
-        }
         let turn_amount = turn_rate.value * time.delta_seconds();
         if let Ok(face) = rotate_facing(transform.translation, facing.value, turn_amount, target.as_vec2().extend(0.0)) {
             facing.value -= face;

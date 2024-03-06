@@ -1,6 +1,7 @@
 use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
-use crate::unit::component::{Velocity, MoveSpeed};
+use crate::unit::component::{Velocity, MoveSpeed, Radius};
 
+mod collision;
 mod component;
 mod movement;
 
@@ -15,7 +16,11 @@ pub struct BulletPlugin;
 
 impl Plugin for BulletPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (fire, movement::calculate_and_apply_velocity))
+        app.add_systems(Update, (
+                fire,
+                movement::calculate_and_apply_velocity,
+                collision::collision
+                ))
             .add_event::<Fire>();
     }
 }
@@ -37,6 +42,8 @@ pub fn fire(
             ..default()
         },
         component::Bullet,
+        Radius { value: BULLET_RADIUS },
+        component::Damage { value: 10 },
         Velocity { x: forward.x, y: forward.y },
         MoveSpeed { value: BULLET_SPEED },
         ));

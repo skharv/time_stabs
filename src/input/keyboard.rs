@@ -8,7 +8,8 @@ const UP: KeyCode = KeyCode::KeyW;
 const DOWN: KeyCode = KeyCode::KeyS;
 const LEFT: KeyCode = KeyCode::KeyA;
 const RIGHT: KeyCode = KeyCode::KeyD;
-const ATTACK: KeyCode = KeyCode::KeyQ;
+const ATTACK: KeyCode = KeyCode::KeyE;
+const STOP: KeyCode = KeyCode::KeyQ;
 const SHIFT: KeyCode = KeyCode::ShiftLeft;
 const CONTROL: KeyCode = KeyCode::ControlLeft;
 const CANCEL: KeyCode = KeyCode::Escape;
@@ -63,6 +64,18 @@ pub fn shoot(
     if keyboard_input.just_pressed(ATTACK) {
         for (entity, _) in query.iter_mut() {
             do_writer.send(super::Do(entity, State::Attack, Vec2::new(0.0, 0.0)));
+        }
+    }
+}
+
+pub fn stop(
+    mut do_writer: EventWriter<super::Do>,
+    mut query: Query<(Entity, &Transform), (With<component::Unit>, With<Selected>)>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    ) {
+    if keyboard_input.just_pressed(STOP) {
+        for (entity, _) in query.iter_mut() {
+            do_writer.send(super::Do(entity, State::Idle, Vec2::new(0.0, 0.0)));
         }
     }
 }

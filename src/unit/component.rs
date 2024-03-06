@@ -22,6 +22,21 @@ pub struct Unit {
 }
 
 #[derive(Component)]
+pub struct Health {
+    pub current: i32,
+    pub max: i32
+}
+
+#[derive(Component)]
+pub struct SelectionCircleUi;
+
+#[derive(Component)]
+pub struct HealthBarUi;
+
+#[derive(Component)]
+pub struct HealthBarAmountUi;
+
+#[derive(Component)]
 pub struct Enemy;
 
 #[derive(Component)]

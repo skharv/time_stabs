@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, prelude::*};
 
 use super::component;
 use crate::input::{component::{Selectable, Selected}, Reverse, Repeat};
@@ -90,17 +90,23 @@ pub fn repeat_history(
     }
 }
 
+#[derive(SystemParam)]
+pub struct HistoryQueries<'w, 's> {
+    original_query: Query<'w, 's, (Entity, &'static mut Sprite, &'static mut component::Target, &'static component::History, Option<&'static component::Enemy>)>,
+    clone_query: Query<'w, 's, (&'static component::Unit, &'static component::History, &'static component::Radius, &'static component::TurnRate, &'static component::MoveSpeed, &'static component::Facing, &'static component::CurrentState, &'static component::CurrentAction, &'static component::Attack, &'static component::AnimationIndices, &'static component::AnimationTimer, &'static component::Health, Option<&'static component::Enemy>)>,
+}
+
 pub fn start_reverse(
     mut commands: Commands,
     mut reverse_reader: EventReader<Reverse>,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    mut query: Query<(Entity, &component::Unit, &mut Sprite, &mut component::Target, &component::History, &component::Radius, &component::TurnRate, &component::MoveSpeed, &component::Facing, &component::CurrentState, &component::CurrentAction, &component::Attack, &component::AnimationIndices, &component::AnimationTimer, Option<&component::Enemy>)>,
+    mut history_queries: HistoryQueries,
     time: Res<Time>,
     ) {
     for event in reverse_reader.read() {
         if !event.1 {
-            if let Ok((entity, unit, mut sprite, mut target, history, _, _, _, _, _, _, _, _, _, opt_enemy)) = query.get_mut(event.0) {
+            if let Ok((entity, mut sprite, mut target, history, opt_enemy)) = history_queries.original_query.get_mut(event.0) {
                 sprite.color = GHOST_COLOR;
                 if let Some(first_snapshot) = history.snapshots.front() {
                     target.x = first_snapshot.position.x;
@@ -114,7 +120,7 @@ pub fn start_reverse(
                 }
             }
         } else {
-            if let Ok((_, unit, _, _, history, radius, turn_rate, move_speed, facing, state, action, attack, anim_indices, anim_timer, opt_enemy)) = query.get(event.0) {
+            if let Ok((unit, history, radius, turn_rate, move_speed, facing, state, action, attack, anim_indices, anim_timer, health, opt_enemy)) = history_queries.clone_query.get(event.0) {
                 if let Some(last_snapshot) = history.snapshots.back() {
                     if let Some(first_snapshot) = history.snapshots.front() {
                         let texture = asset_server.load::<Image>("marine.png");
@@ -148,6 +154,7 @@ pub fn start_reverse(
                         component::CurrentAction { value: action.value },
                         component::CurrentState { value: state.value },
                         component::History { snapshots: history.snapshots.clone() },
+                        component::Health { current: health.current, max: health.max },
                         component::AnimationIndices { current: anim_indices.current, first: anim_indices.first, last: anim_indices.last },
                         component::AnimationTimer { timer: anim_timer.timer.clone() },
                         component::Reverse { timestamp: time.elapsed_seconds() },
@@ -183,12 +190,12 @@ pub fn start_repeat(
     mut repeat_reader: EventReader<Repeat>,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    mut query: Query<(Entity, &component::Unit, &mut Sprite, &mut component::Target, &component::History, &component::Radius, &component::TurnRate, &component::MoveSpeed, &component::Facing, &component::CurrentState, &component::CurrentAction, &component::Attack, &component::AnimationIndices, &component::AnimationTimer, Option<&component::Enemy>)>,
+    mut history_queries: HistoryQueries,
     time: Res<Time>,
     ) {
     for event in repeat_reader.read() {
         if !event.1 {
-            if let Ok((entity, unit, mut sprite, mut target, history, _, _, _, _, _, _, _, _, _, opt_enemy)) = query.get_mut(event.0) {
+            if let Ok((entity, mut sprite, mut target, history, opt_enemy)) = history_queries.original_query.get_mut(event.0) {
                 sprite.color = GHOST_COLOR;
                 if let Some(last_snapshot) = history.snapshots.back() {
                 target.x = last_snapshot.position.x;
@@ -202,7 +209,7 @@ pub fn start_repeat(
                 }
             }
         } else {
-            if let Ok((_, unit, _, _, history, radius, turn_rate, move_speed, facing, state, action, attack, anim_indices, anim_timer, opt_enemy)) = query.get(event.0) {
+            if let Ok((unit, history, radius, turn_rate, move_speed, facing, state, action, attack, anim_indices, anim_timer, health, opt_enemy)) = history_queries.clone_query.get(event.0) {
                 if let Some(first_snapshot) = history.snapshots.front() {
                     if let Some(last_snapshot) = history.snapshots.back() {
                         let texture = asset_server.load::<Image>("marine.png");
@@ -236,6 +243,7 @@ pub fn start_repeat(
                         component::CurrentAction { value: action.value },
                         component::CurrentState { value: state.value },
                         component::History { snapshots: history.snapshots.clone() },
+                        component::Health { current: health.current, max: health.max },
                         component::AnimationIndices { current: anim_indices.current, first: anim_indices.first, last: anim_indices.last },
                         component::AnimationTimer { timer: anim_timer.timer.clone() },
                         component::Repeat { timestamp: time.elapsed_seconds() },
