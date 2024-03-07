@@ -1,8 +1,11 @@
+use std::slice::SliceIndex;
+
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::input::ButtonState;
 use bevy::prelude::*;
 use bevy::prelude::State;
+use bevy::utils::HashMap;
 
 use crate::unit;
 use crate::AppState;
@@ -29,6 +32,11 @@ pub struct Repeat(pub Entity, pub bool);
 #[derive(Event)]
 pub struct Reverse(pub Entity, pub bool);
 
+#[derive(Resource)]
+pub struct ControlGroups {
+    pub groups: HashMap<KeyCode, Vec<Entity>>
+}
+
 pub struct InputPlugin;
 
 impl Plugin for InputPlugin {
@@ -42,6 +50,8 @@ impl Plugin for InputPlugin {
                     keyboard::stop,
                     keyboard::shift_input,
                     keyboard::control_input,
+                    keyboard::get_control_group.run_if(in_state(AppState::InGame)),
+                    keyboard::set_control_group.run_if(in_state(AppState::InGame)),
                     selection,
                     ))
             .add_systems(Update, next_state)
@@ -49,7 +59,10 @@ impl Plugin for InputPlugin {
             .add_event::<Deselect>()
             .add_event::<Do>()
             .add_event::<Repeat>()
-            .add_event::<Reverse>();
+            .add_event::<Reverse>()
+            .insert_resource(ControlGroups {
+                groups: HashMap::default()
+            });
     }
 }
 

@@ -1,6 +1,7 @@
-use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
+use bevy::prelude::*;
 
 mod bullet;
+mod game;
 mod input;
 mod ui;
 mod unit;

@@ -1,6 +1,6 @@
-use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
+use bevy::prelude::*;
 
-use super::{component::{Selected, Selectable}, Reverse, Repeat};
+use super::{component::{Selectable, Selected}, ControlGroups, Repeat, Reverse};
 use crate::unit::State;
 use crate::unit::component;
 
@@ -32,7 +32,7 @@ pub fn control_input(
     query: Query<Entity, (With<component::Unit>, With<Selected>, With<component::History>)>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     ) {
-    if keyboard_input.just_pressed(CONTROL) {
+    if keyboard_input.just_pressed(UP) {
         if !keyboard_input.pressed(SHIFT){
             for entity in query.iter() {
                 repeat_writer.send(Repeat(entity, false));
@@ -76,6 +76,103 @@ pub fn stop(
     if keyboard_input.just_pressed(STOP) {
         for (entity, _) in query.iter_mut() {
             do_writer.send(super::Do(entity, State::Idle, Vec2::new(0.0, 0.0)));
+        }
+    }
+}
+
+pub fn set_control_group(
+    query: Query<Entity, (With<component::Unit>, With<Selected>)>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut control_group: ResMut<ControlGroups>,
+    ) {
+    if keyboard_input.pressed(CONTROL) {
+        let mut keycode: Option<KeyCode> = None;
+        if keyboard_input.just_pressed(KeyCode::Digit0) {
+            keycode = Some(KeyCode::Digit0);
+        }
+        if keyboard_input.just_pressed(KeyCode::Digit1) {
+            keycode = Some(KeyCode::Digit1);
+        }
+        if keyboard_input.just_pressed(KeyCode::Digit2) {
+            keycode = Some(KeyCode::Digit2);
+        }
+        if keyboard_input.just_pressed(KeyCode::Digit3) {
+            keycode = Some(KeyCode::Digit3);
+        }
+        if keyboard_input.just_pressed(KeyCode::Digit4) {
+            keycode = Some(KeyCode::Digit4);
+        }
+        if keyboard_input.just_pressed(KeyCode::Digit5) {
+            keycode = Some(KeyCode::Digit5);
+        }
+        if keyboard_input.just_pressed(KeyCode::Digit6) {
+            keycode = Some(KeyCode::Digit6);
+        }
+        if keyboard_input.just_pressed(KeyCode::Digit7) {
+            keycode = Some(KeyCode::Digit7);
+        }
+        if keyboard_input.just_pressed(KeyCode::Digit8) {
+            keycode = Some(KeyCode::Digit8);
+        }
+        if keyboard_input.just_pressed(KeyCode::Digit9) {
+            keycode = Some(KeyCode::Digit9);
+        }
+        if let Some(key) = keycode {
+            let mut entities = Vec::new();
+            query.iter().for_each(|entity| {
+                entities.push(entity);
+            });
+            control_group.groups.entry(key).or_insert(entities);
+        }
+    }
+}
+
+pub fn get_control_group(
+    mut commands: Commands,
+    query: Query<Entity, (With<component::Unit>, With<Selectable>)>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    control_group: Res<ControlGroups>,
+    ) {
+    let mut keycode: Option<KeyCode> = None;
+    if keyboard_input.just_pressed(KeyCode::Digit0) {
+        keycode = Some(KeyCode::Digit0);
+    }
+    if keyboard_input.just_pressed(KeyCode::Digit1) {
+        keycode = Some(KeyCode::Digit1);
+    }
+    if keyboard_input.just_pressed(KeyCode::Digit2) {
+        keycode = Some(KeyCode::Digit2);
+    }
+    if keyboard_input.just_pressed(KeyCode::Digit3) {
+        keycode = Some(KeyCode::Digit3);
+    }
+    if keyboard_input.just_pressed(KeyCode::Digit4) {
+        keycode = Some(KeyCode::Digit4);
+    }
+    if keyboard_input.just_pressed(KeyCode::Digit5) {
+        keycode = Some(KeyCode::Digit5);
+    }
+    if keyboard_input.just_pressed(KeyCode::Digit6) {
+        keycode = Some(KeyCode::Digit6);
+    }
+    if keyboard_input.just_pressed(KeyCode::Digit7) {
+        keycode = Some(KeyCode::Digit7);
+    }
+    if keyboard_input.just_pressed(KeyCode::Digit8) {
+        keycode = Some(KeyCode::Digit8);
+    }
+    if keyboard_input.just_pressed(KeyCode::Digit9) {
+        keycode = Some(KeyCode::Digit9);
+    }
+    if let Some(key) = keycode {
+        if let Some(entities) = control_group.groups.get(&key) {
+            for entity in query.iter() {
+                if let Some(found) = entities.iter().find(|&&x| x == entity) {
+                    commands.entity(*found).insert(Selected);
+                } else {
+                    commands.entity(entity).remove::<Selected>();
+                }
+            }
         }
     }
 }

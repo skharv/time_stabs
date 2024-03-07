@@ -2,7 +2,6 @@ use std::{collections::VecDeque, f32::consts::PI};
 use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
 use crate::input::component::{Selectable, Selected};
 
-use component::HealthBarAmountUi;
 use crate::AppState;
 
 pub mod action;
