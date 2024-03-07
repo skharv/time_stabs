@@ -2,7 +2,8 @@ use std::{collections::VecDeque, f32::consts::PI};
 use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
 use crate::input::component::{Selectable, Selected};
 
-use self::component::HealthBarAmountUi;
+use component::HealthBarAmountUi;
+use crate::AppState;
 
 pub mod action;
 mod animation;
@@ -29,7 +30,7 @@ pub struct UnitPlugin;
 
 impl Plugin for UnitPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (spawn, spawn_enemy))
+        app.add_systems(OnEnter(AppState::InGame), (spawn, spawn_enemy))
             .add_systems(Update, (
                     show_selection,
                     health_ui,
@@ -145,7 +146,7 @@ pub fn spawn(
                 component::TurnRate { value: 10.0 },
                 component::Target { entity: None, x: 0.0, y: 0.0 },
                 component::CurrentAction { value: action::Action::None },
-                component::Attack { range: 500.0, timer: Timer::from_seconds(5.0, TimerMode::Once) },
+                component::Attack { range: 500.0, timer: Timer::from_seconds(2.0, TimerMode::Once) },
                 component::CurrentState { value: State::Idle },
                 component::History { snapshots: VecDeque::new() },
                 component::Health { current: 100, max: 100 },

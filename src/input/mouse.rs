@@ -1,7 +1,9 @@
 use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
 
-use crate::input::{component, component::AsVec2};
+use crate::input::component::{self, AsVec2};
+use crate::unit::component::{Radius, Target};
 use super::{Deselect, Select, Do};
+use crate::unit::State::{Attack, Move};
 
 const BOX_COLOR: Color = Color::rgba(0.0, 1.0, 0.0, 0.25);
 const CLICK_ACCURACY: f32 = 2.0;
@@ -140,14 +142,29 @@ pub fn act(
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
     mouse_input: Res<ButtonInput<MouseButton>>,
-    selection_query: Query<Entity, With<component::Selected>>,
+    mut selection_query: Query<(Entity, &mut Target), With<component::Selected>>,
+    target_query: Query<(Entity, &Transform, &Radius), Without<component::Selected>>
     ) {
     if mouse_input.just_pressed(MouseButton::Right) {
         let (camera, camera_transform) = cameras.single();
         if let Some(cursor_position) = windows.single().cursor_position() {
             if let Some(position) = camera.viewport_to_world_2d(camera_transform, cursor_position) {
-                for entity in selection_query.iter() {
-                    do_writer.send(super::Do(entity, super::State::Move, position.xy()));
+                for (entity, mut target) in selection_query.iter_mut() {
+                    let mut target_found = false;
+                    for (target_entity, transform, radius) in target_query.iter() {
+                        let distance = transform.translation.xy().distance(position);
+                        if distance <= radius.value {
+                            target_found = true;
+                            target.entity = Some(target_entity);
+                            target.x = transform.translation.x;
+                            target.y = transform.translation.y;
+                        }
+                    }
+                    if target_found {
+                        do_writer.send(super::Do(entity, Attack, position.xy()));
+                    } else {
+                        do_writer.send(super::Do(entity, Move, position.xy()));
+                    }
                 }
             }
         }

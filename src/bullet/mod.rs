@@ -10,7 +10,7 @@ const BULLET_RADIUS: f32 = 5.0;
 const BULLET_COLOR: Color = Color::rgb(1.0, 0.0, 0.0);
 
 #[derive(Event)]
-pub struct Fire(pub Vec2, pub f32);
+pub struct Fire(pub usize,pub Vec2, pub f32);
 
 pub struct BulletPlugin;
 
@@ -32,8 +32,8 @@ pub fn fire(
     mut reader: EventReader<Fire>,
     ) {
     for event in reader.read() {
-        let mut spawn_transform = Transform::from_xyz(event.0.x, event.0.y, 0.0);
-        spawn_transform.rotate_z(event.1);
+        let mut spawn_transform = Transform::from_xyz(event.1.x, event.1.y, 0.0);
+        spawn_transform.rotate_z(event.2);
         let forward = (spawn_transform.rotation * Vec3::Y).truncate();
         commands.spawn((MaterialMesh2dBundle {
             mesh: Mesh2dHandle(meshes.add(Circle { radius: BULLET_RADIUS })),
@@ -41,7 +41,7 @@ pub fn fire(
             transform: spawn_transform,
             ..default()
         },
-        component::Bullet,
+        component::Bullet { owner: event.0 },
         Radius { value: BULLET_RADIUS },
         component::Damage { value: 10 },
         Velocity { x: forward.x, y: forward.y },

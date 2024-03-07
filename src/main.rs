@@ -1,8 +1,21 @@
-use bevy::prelude::*;
+use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
 
-mod input;
-mod unit;
 mod bullet;
+mod input;
+mod ui;
+mod unit;
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, States)]
+pub enum AppState{
+    #[default]
+    Start,
+    RoundStart,
+    RoundEnd,
+    InGame,
+    Pause,
+    Win,
+    Loss,
+}
 
 fn main() {
     let mut app = App::new();
@@ -14,6 +27,7 @@ fn main() {
          bullet::BulletPlugin,
         ))
         .add_systems(Startup, spawn_camera)
+        .init_state::<AppState>()
         .run();
 }
 
