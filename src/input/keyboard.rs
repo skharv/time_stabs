@@ -14,6 +14,29 @@ const SHIFT: KeyCode = KeyCode::ShiftLeft;
 const CONTROL: KeyCode = KeyCode::ControlLeft;
 const CANCEL: KeyCode = KeyCode::Escape;
 
+pub fn camera_movement(
+    mut query: Query<(&Camera, &mut Transform)>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    ) {
+    for (_, mut transform) in query.iter_mut() {
+        let mut direction = Vec3::new(0.0, 0.0, 0.0);
+        if keyboard_input.pressed(UP) {
+            direction.y += 1.0;
+        }
+        if keyboard_input.pressed(DOWN) {
+            direction.y -= 1.0;
+        }
+        if keyboard_input.pressed(LEFT) {
+            direction.x -= 1.0;
+        }
+        if keyboard_input.pressed(RIGHT) {
+            direction.x += 1.0;
+        }
+        transform.translation += direction * 1000.0 * time.delta_seconds();
+    }
+}
+
 pub fn shift_input(
     mut commands: Commands,
     mut reader: EventReader<super::Deselect>,

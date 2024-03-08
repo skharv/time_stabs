@@ -1,6 +1,7 @@
 use std::{collections::VecDeque, f32::consts::PI};
 use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
 use crate::input::component::{Selectable, Selected};
+use rand::Rng;
 
 use crate::AppState;
 
@@ -11,9 +12,17 @@ mod collision;
 mod history;
 mod movement;
 
-const HEALTH_BAR_HEIGHT: f32 = 6.0;
-const HEALTH_BAR_WIDTH: f32 = 50.0;
-const HEALTH_BAR_BORDER: f32 = 2.0;
+pub const HEALTH_BAR_HEIGHT: f32 = 6.0;
+pub const HEALTH_BAR_WIDTH: f32 = 50.0;
+pub const HEALTH_BAR_BORDER: f32 = 2.0;
+
+pub const UNIT_RADIUS: f32 = 20.0;
+pub const UNIT_MOVE_SPEED: f32 = 200.0;
+pub const UNIT_TURN_RATE: f32 = 10.0;
+pub const UNIT_ATTACK_RANGE: f32 = 500.0;
+pub const UNIT_ATTACK_TIMER: f32 = 1.0;
+pub const UNIT_HEALTH: i32 = 100;
+pub const UNIT_ANIMATION_TIMER: f32 = 0.08;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum State {
@@ -21,6 +30,7 @@ pub enum State {
     Move,
     AttackMove,
     Attack,
+    Dead,
     Stop,
     Halt,
 }
@@ -36,6 +46,7 @@ impl Plugin for UnitPlugin {
                     animation::animate_texture_atlas,
                     action::read_action,
                     action::engage,
+                    //action::update_target_position,
                     history::start_repeat,
                     history::start_reverse,
                     movement::arrive,
@@ -55,19 +66,29 @@ impl Plugin for UnitPlugin {
 
 pub fn health(
     mut commands: Commands,
-    mut dying_query: Query<(Entity, &component::Health), Changed<component::Health>>,
-    mut target_query: Query<(&mut component::Target, &mut component::CurrentAction, &mut component::CurrentState), With<component::Unit>>,
+    mut dying_query: Query<(Entity, &mut Transform, &Children, &component::Health, &mut component::CurrentState, &mut TextureAtlas)>,
+    mut target_query: Query<&mut component::Target, With<component::Unit>>,
     ) {
-    for (entity, health) in dying_query.iter_mut() {
+    for (entity, mut transform, children, health, mut state, mut atlas) in dying_query.iter_mut() {
         if health.current <= 0 {
-            for (mut target, mut action, mut state) in target_query.iter_mut() {
+            let mut rng = rand::thread_rng();
+            for mut target in target_query.iter_mut() {
                 if target.entity == Some(entity) {
                     target.entity = None;
-                    action.value = action::Action::None;
-                    state.value = State::Idle;
                 }
             }
-            commands.entity(entity).despawn_recursive();
+            if state.value != State::Dead {
+                state.value = State::Dead;
+                transform.translation.z -= 200.0;
+                atlas.index = rng.gen_range(80..83);
+                for &child in children.iter() {
+                    commands.entity(child).despawn_recursive();
+                }
+                commands.entity(entity).remove::<component::Velocity>();
+                commands.entity(entity).remove::<component::Radius>();
+                commands.entity(entity).remove::<component::MoveSpeed>();
+                commands.entity(entity).remove::<component::Unit>();
+            }
         }
     }
 }
@@ -115,10 +136,9 @@ pub fn spawn(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     ) {
-    let unit_radius = 25.0;
     for n in 0..10 {
         let texture = asset_server.load::<Image>("marine.png");
-        let layout = TextureAtlasLayout::from_grid(Vec2::new(100.0, 100.0), 8, 8, None, None);
+        let layout = TextureAtlasLayout::from_grid(Vec2::new(100.0, 100.0), 8, 11, None, None);
         let texture_atlas_layout = texture_atlas_layouts.add(layout);
         let spawn_transform = Transform::from_xyz((n * 30) as f32, (n * 30) as f32, 0.0);
         let parent = commands.spawn(SpriteSheetBundle {
@@ -138,19 +158,19 @@ pub fn spawn(
         commands.entity(parent).insert((
                 Selectable,
                 component::Unit{ owner: 0 },
-                component::Radius { value: unit_radius },
+                component::Radius { value: UNIT_RADIUS },
                 component::Velocity { x: 0.0, y: 0.0 },
-                component::MoveSpeed { value: 200.0 },
+                component::MoveSpeed { value: UNIT_MOVE_SPEED },
                 component::Facing { value: (2.0 * PI / 10.0) * n as f32 },
-                component::TurnRate { value: 10.0 },
+                component::TurnRate { value: UNIT_TURN_RATE },
                 component::Target { entity: None, x: 0.0, y: 0.0 },
                 component::CurrentAction { value: action::Action::None },
-                component::Attack { range: 500.0, timer: Timer::from_seconds(2.0, TimerMode::Once) },
+                component::Attack { range: UNIT_ATTACK_RANGE, timer: Timer::from_seconds(UNIT_ATTACK_TIMER, TimerMode::Once) },
                 component::CurrentState { value: State::Idle },
                 component::History { snapshots: VecDeque::new() },
-                component::Health { current: 100, max: 100 },
+                component::Health { current: UNIT_HEALTH, max: UNIT_HEALTH },
                 component::AnimationIndices { current: 0, first: 0, last: 7 },
-                component::AnimationTimer { timer: Timer::from_seconds(0.08, TimerMode::Repeating) },
+                component::AnimationTimer { timer: Timer::from_seconds(UNIT_ANIMATION_TIMER, TimerMode::Repeating) },
                 ));
 
         let child_texture = asset_server.load::<Image>("selection_circle.png");
@@ -221,9 +241,8 @@ pub fn spawn_enemy(
     mut materials: ResMut<Assets<ColorMaterial>>,
     ) {
     for n in 0..10 {
-        let unit_radius = 25.0;
         let texture = asset_server.load::<Image>("marine.png");
-        let layout = TextureAtlasLayout::from_grid(Vec2::new(100.0, 100.0), 8, 8, None, None);
+        let layout = TextureAtlasLayout::from_grid(Vec2::new(100.0, 100.0), 8, 11, None, None);
         let texture_atlas_layout = texture_atlas_layouts.add(layout);
         let spawn_transform = Transform::from_xyz(-100.0, -100.0, 0.0);
         let parent = commands.spawn(
@@ -243,19 +262,19 @@ pub fn spawn_enemy(
             ).insert((
                     component::Unit { owner: 1 },
                     component::Enemy,
-                    component::Radius { value: unit_radius },
+                    component::Radius { value: UNIT_RADIUS },
                     component::Velocity { x: 0.0, y: 0.0 },
-                    component::MoveSpeed { value: 200.0 },
+                    component::MoveSpeed { value: UNIT_MOVE_SPEED },
+                    component::TurnRate { value: UNIT_TURN_RATE },
                     component::Facing { value: 0.0 },
-                    component::TurnRate { value: 10.0 },
                     component::Target { entity: None, x: 0.0, y: 0.0 },
                     component::CurrentAction { value: action::Action::None },
-                    component::Attack { range: 500.0, timer: Timer::from_seconds(5.0, TimerMode::Once) },
+                    component::Attack { range: UNIT_ATTACK_RANGE, timer: Timer::from_seconds(UNIT_ATTACK_TIMER, TimerMode::Once) },
                     component::CurrentState { value: State::Idle },
                     component::History { snapshots: VecDeque::new() },
-                    component::Health { current: 100, max: 100 },
+                    component::Health { current: UNIT_HEALTH, max: UNIT_HEALTH },
                     component::AnimationIndices { current: 0, first: 0, last: 7 },
-                    component::AnimationTimer { timer: Timer::from_seconds(0.08, TimerMode::Repeating) },
+                    component::AnimationTimer { timer: Timer::from_seconds(UNIT_ANIMATION_TIMER, TimerMode::Repeating) },
                     )).id();
 
 

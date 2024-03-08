@@ -1,4 +1,4 @@
-use bevy::{ecs::system::SystemParam, prelude::*};
+use bevy::{ecs::system::SystemParam, prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
 
 use super::component;
 use crate::input::{component::{Selectable, Selected}, Reverse, Repeat};
@@ -6,6 +6,8 @@ use crate::input::{component::{Selectable, Selected}, Reverse, Repeat};
 const GHOST_COLOR: Color = Color::rgba(0.5, 0.5, 1.0, 0.3);
 const ENEMY_COLOR: Color = Color::RED;
 const DEFAULT_COLOR: Color = Color::WHITE;
+
+use crate::unit::{HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT, HEALTH_BAR_BORDER};
 
 #[derive(Clone)]
 pub struct Snapshot {
@@ -102,6 +104,8 @@ pub fn start_reverse(
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut history_queries: HistoryQueries,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     time: Res<Time>,
     ) {
     for event in reverse_reader.read() {
@@ -178,6 +182,30 @@ pub fn start_reverse(
                             }).id();
 
                         commands.entity(parent).add_child(child);
+
+                        let outer_shape = Mesh2dHandle(meshes.add(Rectangle::new(HEALTH_BAR_WIDTH + HEALTH_BAR_BORDER, HEALTH_BAR_HEIGHT + HEALTH_BAR_BORDER)));
+                        let inner_shape = Mesh2dHandle(meshes.add(Rectangle::new(HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT)));
+                        let outer_color = Color::BLACK;
+                        let inner_color = Color::GREEN;
+
+                        let outer = commands.spawn((MaterialMesh2dBundle {
+                            mesh: outer_shape,
+                            material: materials.add(outer_color),
+                            transform: Transform::from_xyz(0.0, 50.0, 100.0),
+                            ..default()
+                        },
+                        component::HealthBarUi)).id();
+
+                        let inner = commands.spawn((MaterialMesh2dBundle {
+                            mesh: inner_shape,
+                            material: materials.add(inner_color),
+                            transform: Transform::from_xyz(0.0, 50.0, 101.0),
+                            ..default()
+                        },
+                        component::HealthBarAmountUi)).id();
+
+                        commands.entity(parent).add_child(outer);
+                        commands.entity(parent).add_child(inner);
                     }
                 }
             }
@@ -191,6 +219,8 @@ pub fn start_repeat(
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut history_queries: HistoryQueries,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     time: Res<Time>,
     ) {
     for event in repeat_reader.read() {
@@ -267,6 +297,30 @@ pub fn start_repeat(
                             }).id();
 
                         commands.entity(parent).add_child(child);
+
+                        let outer_shape = Mesh2dHandle(meshes.add(Rectangle::new(HEALTH_BAR_WIDTH + HEALTH_BAR_BORDER, HEALTH_BAR_HEIGHT + HEALTH_BAR_BORDER)));
+                        let inner_shape = Mesh2dHandle(meshes.add(Rectangle::new(HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT)));
+                        let outer_color = Color::BLACK;
+                        let inner_color = Color::GREEN;
+
+                        let outer = commands.spawn((MaterialMesh2dBundle {
+                            mesh: outer_shape,
+                            material: materials.add(outer_color),
+                            transform: Transform::from_xyz(0.0, 50.0, 100.0),
+                            ..default()
+                        },
+                        component::HealthBarUi)).id();
+
+                        let inner = commands.spawn((MaterialMesh2dBundle {
+                            mesh: inner_shape,
+                            material: materials.add(inner_color),
+                            transform: Transform::from_xyz(0.0, 50.0, 101.0),
+                            ..default()
+                        },
+                        component::HealthBarAmountUi)).id();
+
+                        commands.entity(parent).add_child(outer);
+                        commands.entity(parent).add_child(inner);
                     }
                 }
             }

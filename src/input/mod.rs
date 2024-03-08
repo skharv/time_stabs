@@ -46,6 +46,7 @@ impl Plugin for InputPlugin {
                     mouse::show_hide_box,
                     mouse::select_entities,
                     mouse::act,
+                    keyboard::camera_movement,
                     keyboard::shoot,
                     keyboard::stop,
                     keyboard::shift_input,

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 mod bullet;
+mod camera;
 mod game;
 mod input;
 mod ui;
@@ -26,12 +27,9 @@ fn main() {
          input::InputPlugin,
          unit::UnitPlugin,
          bullet::BulletPlugin,
+         camera::CameraPlugin,
         ))
-        .add_systems(Startup, spawn_camera)
         .init_state::<AppState>()
         .run();
 }
 
-fn spawn_camera(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
-}

@@ -52,18 +52,26 @@ pub fn read_action(
     }
 }
 
-pub fn attack(
-    mut fire_writer: EventWriter<Fire>,
-    mut query: Query<(&mut component::CurrentAction, &component::CurrentState, &mut component::Attack, &Transform, &component::Facing, &component::Target, &component::Unit)>,
-    time: Res<Time>,
+pub fn update_target_position(
+    mut target_query: Query<&mut component::Target, With<component::Unit>>,
+    transform_query: Query<&Transform>,
     ) {
-    for (mut action, state, mut attack, transform, facing, target, unit) in query.iter_mut() {
-        if state.value == State::Attack {
-            attack.timer.tick(time.delta());
-            if attack.timer.finished() {
-                action.value = Action::Attack;
+    for mut target in target_query.iter_mut() {
+        if let Some(entity) = target.entity {
+            if let Ok(transform) = transform_query.get(entity) {
+                target.x = transform.translation.x;
+                target.y = transform.translation.y;
             }
         }
+    }
+}
+
+pub fn attack(
+    mut fire_writer: EventWriter<Fire>,
+    mut query: Query<(&mut component::CurrentAction, &mut component::CurrentState, &mut component::Attack, &Transform, &component::Facing, &component::Target, &component::Unit)>,
+    time: Res<Time>,
+    ) {
+    for (mut action, mut state, mut attack, transform, facing, target, unit) in query.iter_mut() {
         if action.value == Action::Attack {
             let forward = Vec2::new(facing.value.cos(), facing.value.sin()).normalize();
             let to_target = (target.as_vec2() - transform.translation.xy()).normalize();
@@ -73,6 +81,19 @@ pub fn attack(
                 action.value = Action::None;
                 attack.timer.reset();
             }
+        }
+        if state.value == State::Attack {
+            if let None = target.entity {
+                action.value = Action::None;
+                state.value = State::Idle;
+            }
+            attack.timer.tick(time.delta());
+            if attack.timer.finished() {
+                action.value = Action::Attack;
+            }
+        }
+        if state.value == State::Idle {
+            attack.timer.reset();
         }
     }
 }

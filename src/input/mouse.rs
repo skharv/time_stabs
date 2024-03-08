@@ -8,12 +8,6 @@ use crate::unit::State::{Attack, Move};
 const BOX_COLOR: Color = Color::rgba(0.0, 1.0, 0.0, 0.25);
 const CLICK_ACCURACY: f32 = 2.0;
 
-#[derive(Resource)]
-pub struct ControlGroup {
-    pub keycode: KeyCode,
-    pub entities: Vec<Entity>,
-}
-
 pub fn spawn_box(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
