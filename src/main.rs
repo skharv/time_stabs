@@ -28,6 +28,7 @@ fn main() {
          unit::UnitPlugin,
          bullet::BulletPlugin,
          camera::CameraPlugin,
+         game::GamePlugin
         ))
         .init_state::<AppState>()
         .run();

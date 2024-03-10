@@ -124,3 +124,9 @@ pub struct AnimationIndices {
 pub struct AnimationTimer {
     pub timer: Timer
 }
+
+#[derive(Component)]
+pub struct RespawnNextRound;
+
+#[derive(Component)]
+pub struct Dead;

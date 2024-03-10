@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use super::component;
 
 pub fn collision(
-    mut query: Query<(&mut Transform, &mut component::Velocity, &component::Radius), (With<component::Unit>, Without<component::Ghost>)>,
+    mut query: Query<(&mut Transform, &mut component::Velocity, &component::Radius), (With<component::Unit>, Without<component::Ghost>, Without<component::Dead>)>,
     ) {
     let mut combinations = query.iter_combinations_mut();
     while let Some([mut unit1, mut unit2]) = combinations.fetch_next() {

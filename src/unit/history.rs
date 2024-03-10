@@ -1,13 +1,11 @@
 use bevy::{ecs::system::SystemParam, prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
-
-use super::component;
 use crate::input::{component::{Selectable, Selected}, Reverse, Repeat};
+use super::{component, UNIT_HEALTH, health::{HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT, HEALTH_BAR_BORDER}};
 
 const GHOST_COLOR: Color = Color::rgba(0.5, 0.5, 1.0, 0.3);
 const ENEMY_COLOR: Color = Color::RED;
 const DEFAULT_COLOR: Color = Color::WHITE;
 
-use crate::unit::{HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT, HEALTH_BAR_BORDER};
 
 #[derive(Clone)]
 pub struct Snapshot {
@@ -18,6 +16,26 @@ pub struct Snapshot {
     pub position: Vec3,
     pub facing: f32,
     pub direction: f32,
+}
+
+pub fn round_end(
+    mut commands: Commands,
+    query: Query<Entity, (With<component::History>, With<component::Unit>, Without<component::Enemy>, Without<component::Dead>)>,
+    ) {
+    for entity in query.iter() {
+        commands.entity(entity).insert(component::RespawnNextRound);
+    }
+}
+
+pub fn round_repeat(
+    mut commands: Commands,
+    mut writer: EventWriter<Repeat>,
+    query: Query<Entity, (With<component::History>, With<component::Unit>, With<component::RespawnNextRound>)>,
+    ) {
+    for entity in query.iter() {
+        commands.entity(entity).remove::<component::RespawnNextRound>();
+        writer.send(Repeat(entity, false));
+    }
 }
 
 pub fn track_history(
@@ -273,7 +291,7 @@ pub fn start_repeat(
                         component::CurrentAction { value: action.value },
                         component::CurrentState { value: state.value },
                         component::History { snapshots: history.snapshots.clone() },
-                        component::Health { current: health.current, max: health.max },
+                        component::Health { current: UNIT_HEALTH, max: UNIT_HEALTH },
                         component::AnimationIndices { current: anim_indices.current, first: anim_indices.first, last: anim_indices.last },
                         component::AnimationTimer { timer: anim_timer.timer.clone() },
                         component::Repeat { timestamp: time.elapsed_seconds() },
