@@ -66,6 +66,20 @@ pub fn show_hide_box(
     }
 }
 
+pub fn double_click_timer(
+    mouse_input: Res<ButtonInput<MouseButton>>,
+    mut timer: ResMut<super::DoubleClick>,
+    time: Res<Time>,
+    ) {
+    if timer.timer.finished() {
+        if mouse_input.just_released(MouseButton::Left) {
+            timer.timer.reset();
+        }
+    } else {
+    timer.timer.tick(time.delta());
+    }
+}
+
 pub fn select_entities(
     mut commands: Commands,
     mut select_event: EventWriter<Select>,
@@ -75,6 +89,7 @@ pub fn select_entities(
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
     mouse_input: Res<ButtonInput<MouseButton>>,
+    timer: ResMut<super::DoubleClick>,
 ) {
     if mouse_input.pressed(MouseButton::Left) && !mouse_input.just_pressed(MouseButton::Left) {
         let (camera, camera_transform) = cameras.single();
@@ -86,6 +101,34 @@ pub fn select_entities(
                     let distance = position.xy().distance(click_position.as_vec2());
                     if distance > CLICK_ACCURACY {
                         commands.entity(mouse).insert(component::Held);
+                    }
+                }
+            }
+        }
+    } else if mouse_input.just_pressed(MouseButton::Left) {
+        let (camera, camera_transform) = cameras.single();
+        if let Some(cursor_position) = windows.single().cursor_position() {
+            if let Some(position) = camera.viewport_to_world_2d(camera_transform, cursor_position) {
+                let (mouse, click_position, opt_held) = mouse_query.single();
+                if !timer.timer.finished() {
+                    for (entity, _, _, _) in selection_query.iter() {
+                        select_event.send(Select(entity));
+                    }
+                } else {
+                    for (entity, transform, radius, opt_selected) in selection_query.iter() {
+                        let start = Vec2::new(position.x.min(click_position.x), position.y.min(click_position.y));
+                        let end = Vec2::new(position.x.max(click_position.x), position.y.max(click_position.y));
+                        if let None = opt_selected {
+                            if (transform.translation.x >= start.x && transform.translation.x <= end.x) &&
+                                (transform.translation.y >= start.y && transform.translation.y <= end.y) {
+                                    select_event.send(Select(entity));
+                                } else {
+                                    let distance = transform.translation.xy().distance(position);
+                                    if distance < radius.value {
+                                        select_event.send(Select(entity));
+                                    }
+                                }
+                        }
                     }
                 }
             }
@@ -104,26 +147,29 @@ pub fn select_entities(
                             if (transform.translation.x >= start.x && transform.translation.x <= end.x) &&
                                 (transform.translation.y >= start.y && transform.translation.y <= end.y) {
                                     select_event.send(Select(entity));
-                            } else {
-                                let distance = transform.translation.xy().distance(position);
-                                if distance < radius.value {
-                                    select_event.send(Select(entity));
+                                } else {
+                                    let distance = transform.translation.xy().distance(position);
+                                    if distance < radius.value {
+                                        select_event.send(Select(entity));
+                                    }
                                 }
-                            }
                         } else {
-                            if !((transform.translation.x >= start.x && transform.translation.x <= end.x) &&
-                                (transform.translation.y >= start.y && transform.translation.y <= end.y)) {
+                            if timer.timer.finished() {
+                                if !((transform.translation.x >= start.x && transform.translation.x <= end.x) &&
+                                     (transform.translation.y >= start.y && transform.translation.y <= end.y)) {
                                     deselect_event.send(Deselect(entity));
+                                }
                             }
                         }
                     }
-                    commands.entity(mouse).remove::<component::Held>();
                 } else {
                     for (entity, transform, radius, opt_selected) in selection_query.iter() {
                         let distance = transform.translation.xy().distance(position);
                         if let Some(_) = opt_selected {
-                            if distance > radius.value {
-                                deselect_event.send(Deselect(entity));
+                            if timer.timer.finished() {
+                                if distance > radius.value {
+                                    deselect_event.send(Deselect(entity));
+                                }
                             }
                         } else {
                             if distance <= radius.value {
@@ -132,6 +178,7 @@ pub fn select_entities(
                         }
                     }
                 }
+                commands.entity(mouse).remove::<component::Held>();
             }
         }
     }

@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{input::{keyboard::KeyboardInput, ButtonState}, prelude::*};
 
 use super::{component::{Selectable, Selected}, ControlGroups, Repeat, Reverse};
 use crate::unit::State;
@@ -79,6 +79,23 @@ pub fn control_input(
     }
 }
 
+pub fn double_tap_timer(
+    mut keyboard_event: EventReader<KeyboardInput>,
+    mut timer: ResMut<super::DoubleTap>,
+    time: Res<Time>,
+    ) {
+    if timer.timer.finished() {
+        for event in keyboard_event.read() {
+            if event.state == ButtonState::Pressed {
+                timer.key = Some(event.key_code);
+                timer.timer.reset();
+            }
+        }
+    } else {
+       timer.timer.tick(time.delta());
+    }
+}
+
 pub fn shoot(
     mut do_writer: EventWriter<super::Do>,
     mut query: Query<(Entity, &Transform), (With<component::Unit>, With<Selected>)>,
@@ -152,9 +169,11 @@ pub fn set_control_group(
 
 pub fn get_control_group(
     mut commands: Commands,
-    query: Query<Entity, (With<component::Unit>, With<Selectable>)>,
+    timer: Res<super::DoubleTap>,
+    query: Query<(Entity, &Transform), (With<component::Unit>, With<Selectable>, Without<Camera>)>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     control_group: Res<ControlGroups>,
+    mut cameras: Query<&mut Transform, (With<Camera>, Without<component::Unit>)>, 
     ) {
     let mut keycode: Option<KeyCode> = None;
     if keyboard_input.just_pressed(KeyCode::Digit0) {
@@ -187,15 +206,26 @@ pub fn get_control_group(
     if keyboard_input.just_pressed(KeyCode::Digit9) {
         keycode = Some(KeyCode::Digit9);
     }
+    let mut selection_count = 0;
+    let mut position = Vec2::new(0.0, 0.0);
     if let Some(key) = keycode {
         if let Some(entities) = control_group.groups.get(&key) {
-            for entity in query.iter() {
+            for (entity, transform) in query.iter() {
                 if let Some(found) = entities.iter().find(|&&x| x == entity) {
+                    selection_count += 1;
+                    position += transform.translation.truncate();
                     commands.entity(*found).insert(Selected);
                 } else {
                     commands.entity(entity).remove::<Selected>();
-                }
+                } 
             }
+        }
+    }
+    if keycode == timer.key && selection_count > 0 {
+    if !timer.timer.finished() {
+            position /= selection_count as f32;
+            let mut camera_transform = cameras.single_mut();
+            camera_transform.translation = Vec3::new(position.x, position.y, camera_transform.translation.z);
         }
     }
 }

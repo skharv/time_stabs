@@ -128,7 +128,7 @@ pub fn start_reverse(
                 if let Some(last_snapshot) = history.snapshots.back() {
                     if let Some(first_snapshot) = history.snapshots.front() {
                         let texture = asset_server.load::<Image>("marine.png");
-                        let layout = TextureAtlasLayout::from_grid(Vec2::new(100.0, 100.0), 8, 8, None, None);
+                        let layout = TextureAtlasLayout::from_grid(Vec2::new(100.0, 100.0), 8, 11, None, None);
                         let texture_atlas_layout = texture_atlas_layouts.add(layout);
                         let spawn_transform = Transform::from_xyz(last_snapshot.position.x, last_snapshot.position.y, 0.0);
                         let parent = commands.spawn((SpriteSheetBundle {
@@ -243,7 +243,7 @@ pub fn start_repeat(
                 if let Some(first_snapshot) = history.snapshots.front() {
                     if let Some(last_snapshot) = history.snapshots.back() {
                         let texture = asset_server.load::<Image>("marine.png");
-                        let layout = TextureAtlasLayout::from_grid(Vec2::new(100.0, 100.0), 8, 8, None, None);
+                        let layout = TextureAtlasLayout::from_grid(Vec2::new(100.0, 100.0), 8, 11, None, None);
                         let texture_atlas_layout = texture_atlas_layouts.add(layout);
                         let spawn_transform = Transform::from_xyz(first_snapshot.position.x, first_snapshot.position.y, 0.0);
                         let parent = commands.spawn((SpriteSheetBundle {

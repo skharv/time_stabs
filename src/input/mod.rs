@@ -1,5 +1,3 @@
-use std::slice::SliceIndex;
-
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::input::ButtonState;
@@ -37,15 +35,28 @@ pub struct ControlGroups {
     pub groups: HashMap<KeyCode, Vec<Entity>>
 }
 
+#[derive(Resource)]
+pub struct DoubleClick {
+    pub timer: Timer,
+}
+
+#[derive(Resource)]
+pub struct DoubleTap {
+    pub key: Option<KeyCode>,
+    pub timer: Timer,
+}
+
 pub struct InputPlugin;
 
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, mouse::spawn_box)
             .add_systems(Update, (
+                    mouse::double_click_timer.after(mouse::select_entities),
                     mouse::show_hide_box,
                     mouse::select_entities,
                     mouse::act,
+                    keyboard::double_tap_timer.after(keyboard::get_control_group),
                     keyboard::camera_movement,
                     keyboard::shoot,
                     keyboard::stop,
@@ -63,7 +74,14 @@ impl Plugin for InputPlugin {
             .add_event::<Reverse>()
             .insert_resource(ControlGroups {
                 groups: HashMap::default()
-            });
+            })
+        .insert_resource(DoubleClick {
+            timer: Timer::from_seconds(0.2, TimerMode::Once)
+        })
+        .insert_resource(DoubleTap {
+            key: None,
+            timer: Timer::from_seconds(0.2, TimerMode::Once)
+        });
     }
 }
 

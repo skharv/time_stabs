@@ -46,7 +46,6 @@ impl Plugin for UnitPlugin {
                     animation::animate_texture_atlas,
                     action::read_action,
                     action::engage,
-                    //action::update_target_position,
                     history::start_repeat,
                     history::start_reverse,
                     movement::arrive,
